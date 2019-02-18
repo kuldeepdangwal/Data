@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import com.cg.payroll.beans.Associate;
 import com.cg.payroll.beans.BankDetails;
@@ -47,7 +48,7 @@ public class AssociateDAOImpl implements AssociateDAO{
 			pstmt4.setInt(2, associate.getBankDetails().getAccountNumber());
 			pstmt4.setString(3, associate.getBankDetails().getBankName());
 			pstmt4.setString(4, associate.getBankDetails().getIfscCode());
-
+			pstmt4.executeUpdate();
 			associate.setAssociateId(associateId);
 
 			con.commit();
@@ -80,9 +81,9 @@ public class AssociateDAOImpl implements AssociateDAO{
 				String designation=associateRs.getString("designation");
 				String pancard=associateRs.getString("pancard");
 				String emailId=associateRs.getString("emailId");
-				
+
 				Associate associate = new Associate(associateId, yearlyInvestmentUnder80C, firstName, lastName, department, designation, pancard, emailId, null, null);
-				
+
 				PreparedStatement pstmt2 = con.prepareStatement("select * from Salary where associateId="+associateId);
 				ResultSet salaryRs=pstmt2.executeQuery();
 				salaryRs.next();
@@ -96,19 +97,16 @@ public class AssociateDAOImpl implements AssociateDAO{
 				int companyPf=salaryRs.getInt("companyPf");
 				int grossSalary=salaryRs.getInt("grossSalary");
 				int netSalary=salaryRs.getInt("netSalary");
-				
+
 				Salary salary = new Salary(basicSalary, hra, conveyenceAllowance, otherAllowance, personalAllowance, monthlyTax, epf, companyPf, grossSalary, netSalary);
 				associate.setSalary(salary);
-				
+
 				PreparedStatement pstmt3 = con.prepareStatement("select * from BankDetails where associateId="+associateId);
 				ResultSet bankDetailsRs=pstmt3.executeQuery();
 				bankDetailsRs.next();
-				int accountNumber=bankDetailsRs.getInt("accountNumber");
-				String bankName=bankDetailsRs.getString("bankName");
-				String ifscCode=bankDetailsRs.getString("ifscCode");
-				
-				BankDetails bankDetails = new BankDetails(accountNumber, bankName, ifscCode);
-				associate.setBankDetails(bankDetails);
+
+				associate.setBankDetails(new BankDetails(bankDetailsRs.getInt("accountNumber"), bankDetailsRs.getString("bankName"), bankDetailsRs.getString("ifscCode")));
+				return associate;
 			}
 		}catch (SQLException e) {
 			e.printStackTrace();
@@ -118,6 +116,32 @@ public class AssociateDAOImpl implements AssociateDAO{
 
 	@Override
 	public List<Associate> findAll() {
-		return null;
+		ArrayList<Associate> associates = new ArrayList<Associate>();
+		try {
+			PreparedStatement pstmt1 = con.prepareStatement("select * from Associate ");
+			ResultSet associateRs=pstmt1.executeQuery();
+			if(associateRs.next()) {
+				int associateId=associateRs.getInt("associateId");
+				
+				Associate associate = new Associate(associateId, associateRs.getInt("yearlyInvestmentUnder80C"), associateRs.getString("firstName"), associateRs.getString("lastName"), associateRs.getString("department"), associateRs.getString("designation"), associateRs.getString("pancard"), associateRs.getString("emailId"), null, null);
+
+				PreparedStatement pstmt2 = con.prepareStatement("select * from Salary where associateId="+associateId);
+				ResultSet salaryRs=pstmt2.executeQuery();
+				salaryRs.next();
+				
+				Salary salary = new Salary(salaryRs.getInt("basicSalary"), salaryRs.getInt("hra"), salaryRs.getInt("conveyenceAllowance"), salaryRs.getInt("otherAllowance"), salaryRs.getInt("personalAllowance"), salaryRs.getInt("monthlyTax"), salaryRs.getInt("epf"), salaryRs.getInt("companyPf"), salaryRs.getInt("grossSalary"), salaryRs.getInt("netSalary"));
+				associate.setSalary(salary);
+
+				PreparedStatement pstmt3 = con.prepareStatement("select * from BankDetails where associateId="+associateId);
+				ResultSet bankDetailsRs=pstmt3.executeQuery();
+				bankDetailsRs.next();
+
+				associate.setBankDetails(new BankDetails(bankDetailsRs.getInt("accountNumber"), bankDetailsRs.getString("bankName"), bankDetailsRs.getString("ifscCode")));
+				associates.add(associate);
+			}
+		}catch (SQLException e) {
+			e.printStackTrace();
+		}
+		return associates;
 	}
 }
